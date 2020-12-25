@@ -31,6 +31,7 @@ main() {
 
     cp admin.sudoers.tpl admin
     chmod a-rwx,u+rw,go+r admin
+    sudo chown root admin 
     sudo mv admin /etc/sudoers.d/admin
     sudo usermod -a -G admin admin
 
