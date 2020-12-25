@@ -1,0 +1,2 @@
+admin ALL=NOPASSWD: ALL
+
