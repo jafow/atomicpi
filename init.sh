@@ -13,7 +13,7 @@ add_authorized_keys() {
     while read keytype piece; do
         if case $target_keytype in $keytype* ) true;; *) false;; esac; then
             k=$(echo $piece | base64 -d)
-            echo "$keytype $k" > $AUTHORIZED_KEYS_BASENAME
+            echo "$keytype $k" > $AUTHORIZED_KEYS_BASENAME/authorized_keys
         else
             printf "Skipping this unrecognized public key. What is this, a key party!??\n%s %s\n" $keytype $piece
         fi
