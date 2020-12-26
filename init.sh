@@ -1,22 +1,15 @@
 #!/usr/bin/env sh
 set -e
 
+PI_USER=badmin
+
 add_authorized_keys() {
     AUTHORIZED_KEYS_BASENAME=$1
     if [ -z $AUTHORIZED_KEYS_BASENAME ]; then
         printf "%s\n" "uh oh there is no authorized_keys path found, using a default!"
-        AUTHORIZED_KEYS_BASENAME="/home/admin/.ssh"
+        AUTHORIZED_KEYS_BASENAME="/home/$PI_USER/.ssh"
     fi
-
-    target_keytype="ssh-ed25519"
-    curl -s https://github.com/jafow.keys -o keys.txt
-    while read keytype piece; do
-        if case $target_keytype in $keytype* ) true;; *) false;; esac; then
-            echo "$keytype $piece" > $AUTHORIZED_KEYS_BASENAME/authorized_keys
-        else
-            printf "Skipping this unrecognized public key. What is this, a key party!??\n%s %s\n" $keytype $piece
-        fi
-    done < keys.txt
+    curl -s https://github.com/jafow.keys -o $AUTHORIZED_KEYS_BASENAME/authorized_keys
 }
 
 tidy_up() {
@@ -26,21 +19,27 @@ tidy_up() {
 
 main() {
     # create a user
-    sudo useradd -m admin -G atomicpi
+    sudo useradd -m -g atomicpi
 
-    cp admin.sudoers.tpl admin
-    chmod a-rwx,u+rw,go+r admin
-    sudo chown root admin 
-    sudo mv admin /etc/sudoers.d/admin
-    sudo usermod -a -G admin admin
+    # add them to sudoers, yolo!
+    cat admin.sudoers.tpl | sed "s/%PI_USER%/$PI_USER/g" > $PI_USER
+    chmod a-rwx,u+rw,go+r $PI_USER
+    sudo chown root:root $PI_USER 
+    sudo mv $PI_USER /etc/sudoers.d/$PI_USER
 
-    # mkdir
-    sudo mkdir /home/admin/.ssh
-    sudo chmod 700 /home/admin/.ssh
+    # setup keys
+    sudo mkdir /home/$PI_USER/.ssh
+    sudo chown -R $PI_USER:$PI_USER /home/$PI_USER/.ssh
+    sudo chmod 700 /home/$PI_USER/.ssh
 
     add_authorized_keys "$(pwd)"
-    sudo cp ./authorized_keys /home/admin/.ssh
-    sudo systemctl restart sshd.service
+    sudo cp authorized_keys /home/$PI_USER/.ssh
+    sudo chmod a-rwx,u+rw /home/$PI_USER/.ssh/authorized_keys
+
+    sudo chown root:root sshd_config
+    sudo mv sshd_config /etc/ssh/sshd_config
+
+    sudo systemctl restart sshd
     printf "we are done and tidying up\n"
     tidy_up
 }
