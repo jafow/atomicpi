@@ -13,8 +13,10 @@ add_authorized_keys() {
 }
 
 tidy_up() {
+    test -e keys.txt || touch keys.txt
     rm keys.txt
-    rm authorized_keys || printf "nope not here\n"
+    test -e authorized_keys  || touch authorized_keys
+    rm authorized_keys
 }
 
 main() {
