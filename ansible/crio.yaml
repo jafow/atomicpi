@@ -1,49 +1,77 @@
 - name: setups
   hosts: all
-  vars: 
+  vars:
     ATOMICPI_OS: xUbuntu_18.04
     K8S_VERSION: 1.19
 
   tasks:
-  - name: tabula rasa apt packages - remove runc
-    file:
-      path: "/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list" 
-      state: absent
+  - name: install cri-o
+    block:
+    - name: tabula rasa - remove runc
+      file:
+        path: "/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
+        state: absent
 
-  - name: tabula rasa apt packages - remove cri-o
-    file:
-      path: "/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}.list" 
-      state: absent
+    - name: tabula rasa - remove cri-o
+      file:
+        path: "/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}.list"
+        state: absent
 
-  - name: packages - add to sources list
-    shell: |
-      echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-      echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ K8S_VERSION }}/{{ ATOMICPI_OS }}/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}.list
+    - name: update and install apt
+      apt:
+        state: present
+        update_cache: yes
+        autoremove: yes
+        name:
+          - apt-transport-https
 
-  - name: Add apt repo for libcontainers
-    apt_repository:
-      repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/ /"
-      state: present
-      filename: "devel:kubic:libcontainers:stable"
+    - name: packages - add to sources list
+      shell: |
+        echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+        echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/{{ K8S_VERSION }}/{{ ATOMICPI_OS }}/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}.list
 
-  - name: add crio apt key
-    apt_key:
-      url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}/{{ ATOMICPI_OS }}/Release.key"
-      state: present
+    - name: Add apt repo for libcontainers
+      apt_repository:
+        repo: "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/ /"
+        state: present
+        filename: "devel:kubic:libcontainers:stable"
 
-  - name: add libcontainers apt key
-    apt_key:
-      url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/Release.key"
-      state: present
+    - name: add crio apt key
+      apt_key:
+        url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ K8S_VERSION }}/{{ ATOMICPI_OS }}/Release.key"
+        state: present
 
-  - name: update and install packages
-    apt:
-      state: present
-      update_cache: yes
-      autoremove: yes
-      name:
-        - cri-o
-        - cri-o-runc
+    - name: add libcontainers apt key
+      apt_key:
+        url: "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/{{ ATOMICPI_OS }}/Release.key"
+        state: present
+
+    - name: install cri-o packages
+      apt:
+        state: present
+        name:
+          - cri-o
+          - cri-o-runc
+
+  - name: install kubeadm and kubelet
+    block:
+      - name: add apt key
+        apt_key:
+          url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+          state: present
+
+      - name: Add kube repository to sources list
+        apt_repository:
+          repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+          state: present
+          filename: kubernetes
+
+      - name: install packages
+        apt:
+          state: present
+          name:
+            - kubeadm
+            - kubelet
 
   become: true
   become_user: root
