@@ -1,0 +1,18 @@
+all:
+  hosts:
+    simon:
+      ansible_python_interpreter: /usr/bin/python3
+      host: 10.10.0.11
+      ansible_user: admin
+    emma:
+      ansible_python_interpreter: /usr/bin/python3
+      host: 10.10.0.12
+      ansible_user: admin
+    anthony:
+      ansible_python_interpreter: /usr/bin/python3
+      host: 10.10.0.13
+      ansible_user: admin
+    lachy:
+      ansible_python_interpreter: /usr/bin/python3
+      host: 10.10.0.14
+      ansible_user: admin
