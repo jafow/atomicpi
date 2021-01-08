@@ -1,0 +1,130 @@
+- name: etcd
+  become: true
+  become_user: root
+  hosts: etcd
+  vars:
+    CFSSL_VERSION: R1.2
+  tasks:
+  - name: Install etcd
+    block:
+    - name: "install cfssl: clean slate - 0"
+      file:
+        path: "/tmp/cfssl"
+        state: absent
+
+    - name: "install cfssl: clean slate - 1"
+      file:
+        path: "/tmp/cfssljson"
+        state: absent
+
+    - name: get cfssl
+      get_url:
+        dest: /usr/local/bin/cfssl
+        tmp_dest: /tmp
+        mode: u+rwx
+        group: atomicpi
+        owner: admin
+        url: https://pkg.cfssl.org/{{ CFSSL_VERSION }}/cfssl_linux-amd64
+
+    - name: get cfssljson
+      get_url:
+        dest: /usr/local/bin/cfssljson
+        tmp_dest: /tmp
+        mode: u+rwx
+        group: atomicpi
+        owner: admin
+        url: https://pkg.cfssl.org/{{ CFSSL_VERSION }}/cfssljson_linux-amd64
+
+  - name: create cert
+    block:
+    - name: create certs directory
+      file:
+        path: /etc/certs
+        state: directory
+        owner: admin
+        group: atomicpi
+
+    - name: sent rootcert configuration
+      template:
+        dest: /etc/certs/etcd-root-ca-csr.json
+        src: ./etcd-ca-csr.j2
+        owner: admin
+        group: atomicpi
+        force: yes
+
+    - name: generate root cert
+      shell: |
+        cfssl gencert -initca=true /etc/certs/etcd-root-ca-csr.json | cfssljson -bare /etc/certs/etcd-root-ca
+      args:
+        warn: no
+
+    - name: verify
+      command:
+        argv:
+          - openssl
+          - x509
+          - -in
+          - /etc/certs/etcd-root-ca.pem
+          - -noout
+
+    - name: send cert generation configuration
+      template:
+        dest: /etc/certs/etcd-gencert.json
+        src: ./gencert-conf.j2
+        owner: admin
+        group: atomicpi
+        force: yes
+
+  - name: create local-issued certificate
+    block:
+    - name: sent local issued template
+      template:
+        dest: /etc/certs/etcd-ca-csr.json
+        src: ./etcd-ca-csr.j2
+        owner: admin
+        group: atomicpi
+        force: yes
+
+    - name: generate cert
+      shell: |
+        cfssl gencert --ca /etc/certs/etcd-root-ca.pem \
+        --ca-key /etc/certs/etcd-root-ca-key.pem --config /etc/certs/etcd-gencert.json \
+        /etc/certs/etcd-ca-csr.json | cfssljson -bare /etc/certs/s1
+      args:
+        warn: no
+
+    - name: verify
+      command:
+        argv:
+          - openssl
+          - x509
+          - -in
+          - /etc/certs/s1.pem
+          - -noout
+
+  - name: copy certs to workers - fetch from store
+    block:
+    - name: copy down certs - ca-csr.json
+      fetch:
+        dest: ./certs/
+        src: /etc/certs/s1-csr.json
+
+    - name: copy down certs - s1.csr
+      fetch:
+        dest: ./certs/
+        src: /etc/certs/s1.csr
+
+    - name: copy down certs - s1 private key
+      fetch:
+        dest: ./certs/
+        src: /etc/certs/s1-key.pem
+
+- name: nodes
+  become: true
+  become_user: root
+  hosts: nodes
+  tasks:
+  - name: copy certs to workers - push
+    copy:
+      src: ./certs/
+      dest: /home/admin/certs/
