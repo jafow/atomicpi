@@ -1,0 +1,7 @@
+[nodes]
+# alias0 host=10.1.1.2 ansible_user=jafow
+# alias1 host=10.1.1.2 ansible_user=jafow
+
+[store]
+# store host=10.2.1.1 ansible_user=store ansible_python_interpreter=/usr/bin/python3 
+
