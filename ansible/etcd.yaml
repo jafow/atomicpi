@@ -1,4 +1,4 @@
-- name: etcd
+- name: etcd - ssl
   become: true
   become_user: root
   hosts: etcd
@@ -119,12 +119,46 @@
         dest: ./certs/
         src: /etc/certs/s1-key.pem
 
+# copy to nodes
 - name: nodes
+  hosts: nodes
   become: true
   become_user: root
-  hosts: nodes
   tasks:
   - name: copy certs to workers - push
     copy:
       src: ./certs/
       dest: /home/admin/certs/
+      group: atomicpi
+
+# install etcd binary
+- name: etcd - install
+  become: true
+  become_user: root
+  hosts: etcd
+  vars:
+    ETCD_VERSION: v3.3.8
+    DOWNLOAD_URL: https://github.com/coreos/etcd/releases/download
+
+  tasks:
+  - name: download tarball from github
+    get_url:
+      dest: /tmp/etcd-{{ ETCD_VERSION }}.tar.gz
+      group: atomicpi
+      owner: admin
+      url: "{{ DOWNLOAD_URL }}/{{ ETCD_VERSION }}/etcd-{{ ETCD_VERSION }}-linux-amd64.tar.gz"
+
+  - name: create etcd directory
+    file:
+      path: /etc/etcd
+      state: directory
+      group: atomicpi
+
+  - name: unpack tarball
+    unarchive:
+      src: /tmp/etcd-{{ ETCD_VERSION }}.tar.gz
+      dest: /etc/etcd
+      group: atomicpi
+      remote_src: yes
+      extra_opts:
+        - --strip-components=1
