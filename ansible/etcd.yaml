@@ -102,7 +102,15 @@
           - /etc/certs/s1.pem
           - -noout
 
-  - name: copy certs to workers - fetch from store
+    - name: chown certs directory
+      file:
+        path: /etc/certs
+        state: directory
+        recurse: yes
+        owner: admin
+        group: atomicpi
+
+  - name: fetch certs from store
     block:
     - name: copy down certs - ca-csr.json
       fetch:
