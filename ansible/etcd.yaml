@@ -88,7 +88,9 @@
     - name: generate cert
       shell: |
         cfssl gencert --ca /etc/certs/etcd-root-ca.pem \
-        --ca-key /etc/certs/etcd-root-ca-key.pem --config /etc/certs/etcd-gencert.json \
+        --ca-key /etc/certs/etcd-root-ca-key.pem \
+        --hostname=192.168.1.76,192.168.1.45 \
+        --config /etc/certs/etcd-gencert.json \
         /etc/certs/etcd-ca-csr.json | cfssljson -bare /etc/certs/s1
       args:
         warn: no
@@ -111,11 +113,17 @@
         group: atomicpi
 
   - name: fetch certs from store
+    become: true
     block:
     - name: copy down certs - ca-csr.json
       fetch:
         dest: ./certs/
         src: /etc/certs/s1-csr.json
+
+    - name: copy down certs - root cert
+      fetch:
+        dest: ./certs/
+        src: /etc/certs/etcd-root-ca.pem
 
     - name: copy down certs - s1.csr
       fetch:
@@ -126,6 +134,11 @@
       fetch:
         dest: ./certs/
         src: /etc/certs/s1-key.pem
+
+    - name: copy down certs - s1 cert
+      fetch:
+        dest: ./certs/
+        src: /etc/certs/s1.pem
 
 # copy to nodes
 - name: nodes
