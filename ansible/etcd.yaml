@@ -161,12 +161,35 @@
       path: /etc/etcd
       state: directory
       group: atomicpi
+      owner: admin
 
   - name: unpack tarball
     unarchive:
       src: /tmp/etcd-{{ ETCD_VERSION }}.tar.gz
       dest: /etc/etcd
       group: atomicpi
+      owner: admin
       remote_src: yes
       extra_opts:
         - --strip-components=1
+
+# systemd
+- name: systemd
+  become: true
+  become_user: root
+  hosts: etcd
+  tasks:
+  - name: render service
+    template:
+      dest: /etc/systemd/system/s1.service
+      src: ./etcd-service.j2
+      owner: admin
+      group: atomicpi
+      force: yes
+
+  - name: start service
+    ansible.builtin.systemd:
+      state: started
+      daemon_reload: yes
+      name: "s1.service"
+      scope: system
